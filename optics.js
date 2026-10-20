@@ -39,7 +39,7 @@
         <circle data-opt="spot" r="4.5" fill="#b08844"/>
         <text data-opt="displacement-label" font-size="15" fill="#a27b38">Δn</text>
         <circle data-opt="incoming-pulse" r="3" fill="#9bb4ca"/><circle data-opt="outgoing-pulse" r="3" fill="#b08844"/>
-        <text x="290" y="121" font-size="11" fill="#8ca0b3">初始反射方向</text>
+        <text data-opt="initial-direction" y="104" font-size="11" fill="#8ca0b3">初始反射方向</text>
         <text x="226" y="224" font-size="11" fill="#8ca0b3">入射方向固定</text>
         <path data-opt="distance-line" stroke="#a9bacb" stroke-width="1"/>
         <text data-opt="distance-label" y="278" text-anchor="middle" font-size="13" fill="#708ca5"></text>
@@ -66,6 +66,7 @@
       attr('mirror',{d:`M110 130 L${tip[0]} ${tip[1]}`});
       attr('baseline',{d:`M76 130 H${rulerX+16}`});
       attr('ruler',{transform:`translate(${rulerX} 0)`});
+      attr('initial-direction',{x:rulerX+18});
       attr('reflected',{d:`M110 130 L${(110+rulerX)/2} ${(130+hitY)/2} L${rulerX} ${hitY}`});
       const angleVisible=extension>0.005?1:0;
       const mirrorArcMid=point(60,-80/DEG+visual/2), lightArcMid=point(65,visual);
