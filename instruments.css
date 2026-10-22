@@ -1,0 +1,35 @@
+/* The reticle and ruler are independent image planes inside the eyepiece. */
+.scope-box{isolation:isolate;background:radial-gradient(circle at 48% 45%,#fffef7 0,#f5f4e8 65%,#d7dccc 100%);border-color:#344a5c;box-shadow:0 0 0 5px #dce5ed,inset 0 0 24px #182b3a2b}
+.scope-ruler{left:50%;top:-9px;width:76px;margin-left:-38px;border-color:#7d8c88;z-index:1;transition:none;will-change:filter}
+.scope-ruler div{color:#344d58;border-color:#788b8e;background:#faf9edb8}
+.scope-ruler div:before,.scope-ruler div:after{background:#738486;right:52px}
+.scope-cross{position:absolute;inset:0;display:block;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible;will-change:filter}
+.scope-cross:before,.scope-cross:after{content:none}
+.scope-cross line{stroke:#182c3a;stroke-width:1.25;vector-effect:non-scaling-stroke}
+.scope-legend{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:8px 0 0;font-size:11px;color:#59748b}
+.scope-legend span{display:inline-flex;gap:6px;align-items:center}
+.scope-legend b{font-size:17px;line-height:1;font-weight:500;color:#233e51}
+.scope-guidance{margin:8px auto 0!important;max-width:340px;text-align:center}
+.focus-practice .control{grid-template-columns:116px minmax(70px,1fr) 50px}
+.focus-practice .control output{font-family:inherit;font-size:12px;line-height:1.5;white-space:nowrap}
+.focus-sequence{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.focus-sequence span{border:1px solid #cedce7;border-radius:5px;padding:4px 9px;font-size:11px;color:#667f94;background:#f9fbfd}
+.focus-sequence span.is-current{border-color:#7ea7c7;color:#075b9b;background:#e8f2fa}
+.focus-sequence span.is-complete{border-color:#9bb8aa;color:#3d735a;background:#f0f7f2}
+.focus-practice .feedback{padding:11px 13px;background:#fff;border:1px solid #dce5ed;border-radius:5px;color:#3d607d}
+.tape-practice h4{margin:0 0 9px;font-size:13px;font-weight:600;color:#365b78}
+.tape-options{display:grid;gap:9px;margin:13px 0}
+.tape-options .secondary{text-align:left;justify-content:flex-start;line-height:1.7;padding:10px 12px}
+.tape-practice .feedback{font-size:12px;line-height:1.8}
+.tape-practice .numeric{width:115px}
+.error-inputs{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:16px 0}
+.error-inputs label{display:grid;gap:6px;font-size:12px;color:#3e617c}
+.error-inputs .numeric{width:155px}
+.error-practice .feedback{white-space:pre-line;line-height:1.9;color:#365e7b}
+.error-inputs input[aria-invalid="true"]{border-color:#b24b3b;background:#fff8f6}
+.error-exercise-card h4{margin:0 0 10px;font-size:14px;color:#365b78}
+.error-comparison{align-items:start;margin:18px 0}
+.error-comparison .error-exercise-card{background:#fff;border:1px solid #d6e1eb;border-radius:7px;padding:18px;min-width:0}
+.error-comparison .error-inputs{gap:10px}
+.error-comparison .error-inputs .numeric{width:132px}
+@media(max-width:660px){.focus-practice .control{grid-template-columns:105px minmax(60px,1fr) 40px;gap:8px}}
