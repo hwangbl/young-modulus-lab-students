@@ -1,0 +1,18 @@
+/* Equation typography: identifiers italic; functions, numbers, units and labels upright. */
+.ym-math{font-family:"STIX Two Math","Cambria Math","STIXGeneral","Times New Roman",serif;color:inherit;font-style:normal;font-weight:400}
+math.ym-inline{display:inline math;vertical-align:-.12em;font-size:1.05em;margin:0 .08em;max-width:100%}
+math.ym-display{display:block math;margin:.45em auto;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:.15em 0 .3em;line-height:1.6}
+math mi[mathvariant="italic"]{font-style:italic}math mi[mathvariant="normal"],math mn,math mtext,math mo{font-style:normal}
+.formula math.ym-display{font-size:1.13em}.yd .yd-formula math.ym-display{font-size:1.12em}.yd details math.ym-inline{font-size:1.02em}
+.step-index,.numbered li::before{font-style:normal!important}
+@media(max-width:660px){.formula math.ym-display,.yd .yd-formula math.ym-display{font-size:1em}.yd details math.ym-inline{font-size:.98em}}
+@media print{.ym-math{color:inherit}math.ym-display{overflow:visible}}
+
+/* Only the five-term propagation equation scrolls; ordinary inline math keeps its flow. */
+.ym-equation-block{display:block;max-width:100%;min-width:0;margin:.6em 0}
+.ym-equation-scroll{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;padding:.3em .15em .45em;scrollbar-width:thin}
+.ym-equation-scroll>math.ym-math{display:block math;width:max-content;max-width:none;margin:0;font-size:1.05em;overflow:visible;padding:.15em .25em;white-space:nowrap}
+.ym-equation-scroll:focus-visible{outline:2px solid #246891;outline-offset:2px}
+.ym-equation-hint{display:none;font:12px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-style:normal;color:#637d8d;margin-top:.2em}
+@media(max-width:660px){.ym-equation-hint{display:block}.yd details .ym-equation-scroll>math.ym-math{font-size:1.05em}}
+@media print{.ym-equation-scroll{overflow:visible}.ym-equation-hint{display:none}}

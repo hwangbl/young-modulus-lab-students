@@ -80,7 +80,7 @@
       attr('spot',{cx:rulerX,cy:hitY});attr('spot-halo',{cx:rulerX,cy:hitY});
       attr('displacement-label',{x:rulerX+36,y:(130+hitY)/2+5,opacity:extension>0.005?1:0});
       attr('distance-line',{d:`M110 252v7M110 256H${rulerX}M${rulerX} 252v7`});
-      attr('distance-label',{x:(110+rulerX)/2});nodes['distance-label'].textContent=`D = ${D.toFixed(1)} m`;
+      attr('distance-label',{x:(110+rulerX)/2});nodes['distance-label'].innerHTML=`<tspan font-style="italic">D</tspan><tspan font-style="normal"> = ${D.toFixed(1)} m</tspan>`;
       const pulse=(phase*8)%1;
       attr('incoming-pulse',{cx:310-200*pulse,cy:202.79-72.79*pulse});
       attr('outgoing-pulse',{cx:110+(rulerX-110)*pulse,cy:130+(hitY-130)*pulse});
@@ -123,7 +123,7 @@
     container.addEventListener('input',onInput);container.addEventListener('click',onClick);
     document.addEventListener('visibilitychange',reconcile);
     const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;reconcile()},{threshold:0.05});
-    observer.observe(container);draw();updateStatus();
+    observer.observe(container);draw();updateStatus();if(global.YoungMath)global.YoungMath.typeset(container);
     return {destroy(){destroyed=true;cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('visibilitychange',reconcile);container.removeEventListener('input',onInput);container.removeEventListener('click',onClick)}};
   }
   global.YoungOptics={mount,model};

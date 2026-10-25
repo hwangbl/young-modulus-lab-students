@@ -324,6 +324,11 @@
     var precision = Math.min(15, Math.max(2, Math.floor(Math.log10(Math.abs(value))) + places));
     return value.toExponential(precision);
   }
+  function graphMathText(value) {
+    return xml(value).replace(/n̄|M|R²/g, function (token) {
+      return token === 'R²' ? '<tspan font-style="italic">R</tspan><tspan font-style="normal" baseline-shift="super" font-size="75%">2</tspan>' : '<tspan font-style="italic">' + token + '</tspan>';
+    });
+  }
   function graphMarkup(result, fields, uid) {
     if (!result.fit) return '<div class="yd-graph-placeholder">录入完整的 8 组增载与减载读数后，<br>这里将展示 8 个标尺均值点与线性拟合。</div>';
     var W = 960, H = 640, left = 118, right = 52, top = 80, bottom = 154;
@@ -374,7 +379,7 @@
     positions.sort(function (a, b) { return a.score - b.score; });
     var legend = positions[0];
     svg += '<g data-graph-legend="inside" transform="translate(' + coord(legend.x) + ' ' + coord(legend.y) + ')"><rect width="248" height="76" rx="5" fill="#fff" fill-opacity="0.96" stroke="#cbdce9"/><rect x="18" y="19" width="10" height="10" fill="#fff" stroke="#144c75" stroke-width="2"/><text x="40" y="30" font-size="16" fill="#476780">增减载均值（8 点）</text><line x1="18" y1="53" x2="34" y2="53" stroke="#0768ac" stroke-width="2.5"/><text x="40" y="59" font-size="16" fill="#476780">最小二乘拟合直线</text></g>';
-    svg += '<text x="' + ((left + plotRight) / 2) + '" y="552" text-anchor="middle" fill="#224b69" font-size="19">砝码总质量 M / kg</text><text transform="translate(32 ' + ((top + plotBottom) / 2) + ') rotate(-90)" text-anchor="middle" fill="#224b69" font-size="19">标尺均值 n̄ / mm</text><text data-fit-result="equation" x="480" y="589" text-anchor="middle" fill="#476780" font-size="17">拟合：' + xml(equation) + '</text><text data-fit-result="r2" x="480" y="616" text-anchor="middle" fill="#476780" font-size="16">R² = ' + fitShown.r2 + '</text>';
+    svg += '<text x="' + ((left + plotRight) / 2) + '" y="552" text-anchor="middle" fill="#224b69" font-size="19" aria-label="砝码总质量 M / kg">砝码总质量 <tspan font-style="italic">M</tspan> / kg</text><text transform="translate(32 ' + ((top + plotBottom) / 2) + ') rotate(-90)" text-anchor="middle" fill="#224b69" font-size="19" aria-label="标尺均值 n̄ / mm">标尺均值 <tspan font-style="italic">n̄</tspan> / mm</text><text data-fit-result="equation" x="480" y="589" aria-label="' + xml(equation) + '" text-anchor="middle" fill="#476780" font-size="17">拟合：' + graphMathText(equation) + '</text><text data-fit-result="r2" x="480" y="616" aria-label="R² = ' + fitShown.r2 + '" text-anchor="middle" fill="#476780" font-size="16"><tspan font-style="italic">R</tspan><tspan font-style="normal" baseline-shift="super" font-size="75%">2</tspan> = ' + fitShown.r2 + '</text>';
     if (result.demo) svg += '<text data-demo-mark="true" x="908" y="626" text-anchor="end" fill="#9b6014" font-size="13">演示数据</text>';
     return svg + '</svg>';
   }
@@ -646,6 +651,7 @@
         text('uncertaintyStatus', result.uncertaintyErrors.length ? result.uncertaintyErrors.join(' ') : (result.uncertaintyMissing ? '还需填写 ' + result.uncertaintyMissing + ' 个仪器或估读误差限（无此项填 0），才会自动输出不确定度。' : '请先完成原始测量与逐差检查，再合成不确定度。'));
         outputs.uncertaintyStatus.dataset.state = result.uncertaintyErrors.length ? 'error' : 'waiting';
       }
+      if (global.YoungMath) global.YoungMath.typeset(wrapper);
     }
     function collect(event) {
       var target = event.target;
