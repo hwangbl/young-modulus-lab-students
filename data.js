@@ -57,12 +57,37 @@
     errorKeys.forEach(function (key) { if (!state.errorOverrides[key]) state.fields[key] = errorSuggestion(key, state.fields); });
     return state;
   }
+  var plotSymbols = [
+    { value: 'square', label: '□ 空心方块', name: '空心方块' },
+    { value: 'circle', label: '○ 空心圆', name: '空心圆' },
+    { value: 'triangle', label: '△ 空心三角形', name: '空心三角形' },
+    { value: 'triangle-down', label: '▽ 空心倒三角形', name: '空心倒三角形' },
+    { value: 'diamond', label: '◇ 空心菱形', name: '空心菱形' }
+  ];
+  function normalizePlotStyle(value) {
+    value = value || {};
+    var raw = value.size, size = typeof raw === 'number' || (typeof raw === 'string' && raw.trim()) ? Number(raw) : NaN;
+    if (!Number.isFinite(size)) size = 10;
+    return { symbol: plotSymbols.some(function (item) { return item.value === value.symbol; }) ? value.symbol : 'square', size: Math.max(4, Math.min(18, Math.round(size))) };
+  }
+  function graphSymbol(style, x, y, role, title) {
+    var half = style.size / 2, shape, tag, coords = function (v) { return v.toFixed(3); };
+    var identity = role === 'mean' ? ' data-point="mean"' : ' data-legend-marker="true"';
+    if (style.symbol === 'circle') { tag = 'circle'; shape = ' cx="' + coords(x) + '" cy="' + coords(y) + '" r="' + half + '"'; }
+    else if (style.symbol === 'square') { tag = 'rect'; shape = ' x="' + coords(x - half) + '" y="' + coords(y - half) + '" width="' + style.size + '" height="' + style.size + '"'; }
+    else {
+      tag = 'polygon';
+      var points = style.symbol === 'diamond' ? [[x, y - half], [x + half, y], [x, y + half], [x - half, y]] : style.symbol === 'triangle-down' ? [[x - half, y - half * .8660254], [x + half, y - half * .8660254], [x, y + half * .8660254]] : [[x, y - half * .8660254], [x + half, y + half * .8660254], [x - half, y + half * .8660254]];
+      shape = ' points="' + points.map(function (point) { return coords(point[0]) + ',' + coords(point[1]); }).join(' ') + '"';
+    }
+    return '<' + tag + identity + shape + ' data-symbol="' + style.symbol + '" data-symbol-size="' + style.size + '" fill="#fff" stroke="#144c75" stroke-width="2" stroke-linejoin="round">' + (title ? '<title>' + xml(title) + '</title>' : '') + '</' + tag + '>';
+  }
   function blankState() {
     var fields = {}, overrides = {};
     keys.forEach(function (key) { fields[key] = ''; });
     errorKeys.forEach(function (key) { overrides[key] = false; });
     fields.step = '1000'; fields.g = '9.79';
-    return applyErrorSuggestions({ version: 3, fields: fields, selected: [true, true, true, true], demo: false, migrated: false, method: 'successive', digits: 2, errorOverrides: overrides });
+    return applyErrorSuggestions({ version: 3, fields: fields, selected: [true, true, true, true], demo: false, migrated: false, method: 'successive', digits: 2, plotStyle: normalizePlotStyle(), errorOverrides: overrides });
   }
   function normalize(data) {
     var base = blankState();
@@ -79,6 +104,7 @@
     base.demo = !!data.demo;
     base.method = data.method === 'endpoint' ? 'endpoint' : 'successive';
     base.digits = Number(data.digits) === 1 ? 1 : 2;
+    base.plotStyle = normalizePlotStyle(data.plotStyle);
     // Version 1 stored final standard uncertainties, never instrument error limits.
     base.migrated = !!data.migrated || (data.version !== 2 && data.version !== 3 && ['uL', 'uD', 'ub', 'ud', 'un'].some(function (key) { return data.fields[key] != null && String(data.fields[key]).trim() !== ''; }));
     return applyErrorSuggestions(base);
@@ -329,7 +355,8 @@
       return token === 'R²' ? '<tspan font-style="italic">R</tspan><tspan font-style="normal" baseline-shift="super" font-size="75%">2</tspan>' : '<tspan font-style="italic">' + token + '</tspan>';
     });
   }
-  function graphMarkup(result, fields, uid) {
+  function graphMarkup(result, fields, uid, plotStyle) {
+    var style = normalizePlotStyle(plotStyle), symbolName = plotSymbols.find(function (item) { return item.value === style.symbol; }).name;
     if (!result.fit) return '<div class="yd-graph-placeholder">录入完整的 8 组增载与减载读数后，<br>这里将展示 8 个标尺均值点与线性拟合。</div>';
     var W = 960, H = 640, left = 118, right = 52, top = 80, bottom = 154;
     var plotRight = W - right, plotBottom = H - bottom;
@@ -353,7 +380,7 @@
     var coord = function (v) { return v.toFixed(3); };
     var title = '标尺均值与砝码总质量的关系';
     var fitShown = fitDisplay(result, fields), equation = fitShown.equation;
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="' + xml(uid) + '-graph-title ' + xml(uid) + '-graph-desc" style="font-family:Arial,\'PingFang SC\',\'Microsoft YaHei\',sans-serif;background:#fff"><title id="' + xml(uid) + '-graph-title">' + title + '</title><desc id="' + xml(uid) + '-graph-desc">8 个空心方块为增减载标尺读数的均值，蓝色直线为最小二乘拟合。横轴总质量 M，单位 kg；纵轴标尺均值 n̄，单位 mm。</desc><rect width="960" height="640" fill="#fff"/><text x="480" y="40" text-anchor="middle" fill="#163f64" font-size="24" font-weight="700">' + title + '</text>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="' + xml(uid) + '-graph-title ' + xml(uid) + '-graph-desc" style="font-family:Arial,\'PingFang SC\',\'Microsoft YaHei\',sans-serif;background:#fff"><title id="' + xml(uid) + '-graph-title">' + title + '</title><desc id="' + xml(uid) + '-graph-desc">8 个' + symbolName + '为增减载标尺读数的均值，蓝色直线为最小二乘拟合。横轴总质量 M，单位 kg；纵轴标尺均值 n̄，单位 mm。</desc><rect width="960" height="640" fill="#fff"/><text x="480" y="40" text-anchor="middle" fill="#163f64" font-size="24" font-weight="700">' + title + '</text>';
     var tickCount = niceTicks ? Math.round((ymax - ymin) / tick) : 5;
     for (var t = 0; t <= tickCount; t++) {
       var vy = niceTicks ? ymin + tick * t : ymin + (ymax - ymin) * t / 5, cy = py(vy);
@@ -363,7 +390,7 @@
     xs.forEach(function (x) { var cx = px(x); svg += '<line x1="' + coord(cx) + '" y1="' + top + '" x2="' + coord(cx) + '" y2="' + plotBottom + '" stroke="#edf1f6"/><line x1="' + coord(cx) + '" y1="' + plotBottom + '" x2="' + coord(cx) + '" y2="' + (plotBottom + 7) + '" stroke="#385d79"/><text x="' + coord(cx) + '" y="' + (plotBottom + 28) + '" text-anchor="middle" fill="#385d79" font-size="16">' + xml(axisNumber(x, xspan / 7)) + '</text>'; });
     svg += '<rect data-plot-frame="true" x="' + left + '" y="' + top + '" width="' + (plotRight - left) + '" height="' + (plotBottom - top) + '" fill="none" stroke="#385d79" stroke-width="1.8"/>';
     svg += '<line x1="' + coord(px(xmin)) + '" y1="' + coord(py(result.fit.intercept + result.fit.slope * xmin)) + '" x2="' + coord(px(xmax)) + '" y2="' + coord(py(result.fit.intercept + result.fit.slope * xmax)) + '" stroke="#0768ac" stroke-width="2.5"/>';
-    ys.forEach(function (y, i) { svg += '<rect data-point="mean" x="' + coord(px(xs[i]) - 5) + '" y="' + coord(py(y) - 5) + '" width="10" height="10" fill="#fff" stroke="#144c75" stroke-width="2"><title>M = ' + xml(graphNumber(xs[i])) + ' kg；n̄ = ' + xml(meanDisplay(fields['up' + i], fields['down' + i])) + ' mm</title></rect>'; });
+    ys.forEach(function (y, i) { svg += graphSymbol(style, px(xs[i]), py(y), 'mean', 'M = ' + graphNumber(xs[i]) + ' kg；n̄ = ' + meanDisplay(fields['up' + i], fields['down' + i]) + ' mm'); });
     // Pick the emptiest inner corner; keep the legend away from points and fit.
     var legendW = 248, legendH = 76, inset = 18;
     var positions = [
@@ -378,7 +405,7 @@
     });
     positions.sort(function (a, b) { return a.score - b.score; });
     var legend = positions[0];
-    svg += '<g data-graph-legend="inside" transform="translate(' + coord(legend.x) + ' ' + coord(legend.y) + ')"><rect width="248" height="76" rx="5" fill="#fff" fill-opacity="0.96" stroke="#cbdce9"/><rect x="18" y="19" width="10" height="10" fill="#fff" stroke="#144c75" stroke-width="2"/><text x="40" y="30" font-size="16" fill="#476780">增减载均值（8 点）</text><line x1="18" y1="53" x2="34" y2="53" stroke="#0768ac" stroke-width="2.5"/><text x="40" y="59" font-size="16" fill="#476780">最小二乘拟合直线</text></g>';
+    svg += '<g data-graph-legend="inside" transform="translate(' + coord(legend.x) + ' ' + coord(legend.y) + ')"><rect width="248" height="76" rx="5" fill="#fff" fill-opacity="0.96" stroke="#cbdce9"/>' + graphSymbol(style, 23, 24, 'legend') + '<text x="40" y="30" font-size="16" fill="#476780">增减载均值（8 点）</text><line x1="18" y1="53" x2="34" y2="53" stroke="#0768ac" stroke-width="2.5"/><text x="40" y="59" font-size="16" fill="#476780">最小二乘拟合直线</text></g>';
     svg += '<text x="' + ((left + plotRight) / 2) + '" y="552" text-anchor="middle" fill="#224b69" font-size="19" aria-label="砝码总质量 M / kg">砝码总质量 <tspan font-style="italic">M</tspan> / kg</text><text transform="translate(32 ' + ((top + plotBottom) / 2) + ') rotate(-90)" text-anchor="middle" fill="#224b69" font-size="19" aria-label="标尺均值 n̄ / mm">标尺均值 <tspan font-style="italic">n̄</tspan> / mm</text><text data-fit-result="equation" x="480" y="589" aria-label="' + xml(equation) + '" text-anchor="middle" fill="#476780" font-size="17">拟合：' + graphMathText(equation) + '</text><text data-fit-result="r2" x="480" y="616" aria-label="R² = ' + fitShown.r2 + '" text-anchor="middle" fill="#476780" font-size="16"><tspan font-style="italic">R</tspan><tspan font-style="normal" baseline-shift="super" font-size="75%">2</tspan> = ' + fitShown.r2 + '</text>';
     if (result.demo) svg += '<text data-demo-mark="true" x="908" y="626" text-anchor="end" fill="#9b6014" font-size="13">演示数据</text>';
     return svg + '</svg>';
@@ -555,7 +582,7 @@
       '<article class="yd-card"><div class="yd-kicker">03 / 逐差检验</div><h3>选择取数方法</h3><label class="yd-method" for="' + uid + '-method">计算方法<select id="' + uid + '-method" data-method><option value="successive">原指导书：四级逐差法（默认）</option><option value="endpoint">数据处理课件：七级端点法</option></select></label><p class="yd-help" data-out="methodHint"></p><p class="yd-note">原指导书采用四组逐差的平均值，也允许合理选择两组数据求力与读数的增量比。此处默认使用全部四组，可按教师要求选择取数组。</p><div class="yd-pairs">' + pairMarkup + '</div><div class="yd-report-lines"><div class="yd-report-line"><span data-out="dnLabel">所选逐差绝对均值 Δn</span><strong data-out="dn">— mm</strong></div><div class="yd-report-line"><span data-out="forceLabel">对应力增量 ΔF = 4mg</span><strong data-out="force">— N</strong></div><div class="yd-report-line"><span data-out="ratioLabel">ΔF/Δn（按运算规则显示）</span><strong data-out="forceRatio">— N/mm</strong></div></div><p class="yd-help">逐差保留符号以检查方向，计算时取所选逐差均值的绝对值。完整输入 8 组增减载读数后再输出 E；平台不自动删除异常值。</p></article></div>' +
       '<div class="yd-stack"><article class="yd-card yd-result"><div class="yd-kicker">杨氏模量 · 实验结果</div><h3 data-out="methodResult">逐差法测得 E</h3><div class="yd-value" data-out="E">— <span>GPa</span></div><small data-out="resultHint">完成原始测量记录后自动计算</small><div class="yd-toast" data-out="demoNotice" hidden style="color:#ffe1af">当前为模拟教学数据，不能作为实测结果提交。</div></article>' +
       '<article class="yd-card"><h3>从读数到杨氏模量</h3><div class="yd-formula" aria-label="E 等于 8 乘力增量乘原长乘镜尺距离，除以 π 乘直径平方乘光杠杆臂长乘标尺位移">E = 8ΔF L D / (πd̄² b Δn)</div><p class="yd-note">内部统一换算为 m、kg、N，E 的计算单位为 Pa，显示时除以 10⁹ 转为 GPa。预载用于拉直金属丝，ΔF 取所选两读数之间的增量。</p><div class="yd-status" data-out="status" role="status" aria-live="polite"></div></article>' +
-      '<article class="yd-card"><div class="yd-kicker">线性关系</div><h3>用标尺均值描点与拟合</h3><div class="yd-graph" data-out="graph"></div><div class="yd-graph-actions"><button class="yd-button yd-quiet" type="button" data-action="svg" disabled>导出 SVG 图片</button><button class="yd-button yd-quiet" type="button" data-action="png" disabled>导出高清 PNG</button><span>白底 · 含图名、单位、刻度与拟合信息</span></div><div class="yd-fit-stats"><span>斜率 <strong data-out="slope">—</strong> mm/kg</span><span>截距 <strong data-out="intercept">—</strong> mm</span><span>R² <strong data-out="r2">—</strong></span></div><p class="yd-help" data-out="fitE">8 个均值点用于最小二乘拟合，作为取数法的交叉检查。</p></article>' +
+      '<article class="yd-card"><div class="yd-kicker">线性关系</div><h3>用标尺均值描点与拟合</h3><div class="yd-plot-controls" role="group" aria-label="散点显示设置"><label for="' + uid + '-plot-symbol">散点符号<select id="' + uid + '-plot-symbol" data-plot-symbol>' + plotSymbols.map(function (item) { return '<option value="' + item.value + '">' + item.label + '</option>'; }).join('') + '</select></label><label class="yd-plot-size-label" for="' + uid + '-plot-size">散点大小 <output data-out="plotSize" for="' + uid + '-plot-size">10 px</output><input id="' + uid + '-plot-size" data-plot-size type="range" min="4" max="18" step="1" value="10"></label><button type="button" class="yd-button yd-quiet" data-action="reset-plot-style">恢复默认样式</button><p class="yd-plot-hint">大小按图中的符号宽度设置；图例、预览与导出图片同步更新。</p></div><div class="yd-graph" data-out="graph"></div><div class="yd-graph-actions"><button class="yd-button yd-quiet" type="button" data-action="svg" disabled>导出 SVG 图片</button><button class="yd-button yd-quiet" type="button" data-action="png" disabled>导出高清 PNG</button><span>白底 · 含图名、单位、刻度与拟合信息</span></div><div class="yd-fit-stats"><span>斜率 <strong data-out="slope">—</strong> mm/kg</span><span>截距 <strong data-out="intercept">—</strong> mm</span><span>R² <strong data-out="r2">—</strong></span></div><p class="yd-help" data-out="fitE">8 个均值点用于最小二乘拟合，作为取数法的交叉检查。</p></article>' +
       '<article class="yd-card"><div class="yd-kicker">不确定度自动评估</div><h3>误差限自动建议，也可手动修改</h3><p class="yd-note">已按课程资料填写<strong>仪器误差限</strong>与<strong>估读误差限</strong>建议值（单位 mm）。L、D 的仪器限随原始长度自动计算；修改任何误差限后，该项保留为手动值。平台按均匀分布自动除以 √3，再合成 A、B 类分量；不必输入最终 u 值。标尺 n 的误差限指每个增减载<strong>均值端点</strong>。</p><label class="yd-digits-control">误差与不确定度显示<select data-digits><option value="1">1 位可疑数字</option><option value="2">2 位可疑数字（默认）</option></select></label><p class="yd-help">显示位数仅控制自动建议外观与报告修约，不改变计算精度；手动输入及 CSV 输入行保留原值，下方另列报告显示值。</p><button class="yd-button yd-quiet yd-restore-errors" type="button" data-action="restore-errors">恢复课程建议值</button><div class="yd-table-wrap"><table class="yd-table yd-error-table"><thead><tr><th>物理量</th><th>仪器误差限 / mm</th><th>估读误差限 / mm</th></tr></thead><tbody>' + errorQuantities.map(function (q) { return '<tr><th scope="row">' + ({L:'L',D:'D',b:'b',d:'直径 d',n:'标尺均值 n'})[q] + '</th><td>' + input('i' + q, q + ' 仪器误差限', '无此项填 0') + '</td><td>' + input('e' + q, q + ' 估读误差限', '无此项填 0') + '</td></tr>'; }).join('') + '</tbody></table></div><p class="yd-help">估读限填写未被重复测量散度涵盖的分辨或判断分量；若已计入 A 类且无额外来源，可填 0，避免重复计算。共同仪器误差不因重复次数变多而自动缩小；直径误差限按零差修正后的直径填写；若零差改正值另有不确定度，请并入相应误差限，同一校准来源勿重复计入。</p><div class="yd-standard-components" data-out="standardComponents"></div><div class="yd-status" data-out="uncertaintyStatus" role="status" aria-live="polite">可稍后填写。</div><div class="yd-budget" data-out="budget" hidden></div><details><summary>查看建议值、自动评估模型与课程近似</summary><p>卷尺仪器误差限 = (0.2 × 测量值(mm)/1000 + 0.3) mm，因此 iL = 0.2L(m) + 0.3 mm，iD 同理；内部使用未修约值。固定建议：L 估读 2 mm、D 估读 5 mm；b 仪器 0.02 mm、估读 0.2 mm；直径仪器 0.004 mm、估读 0.002 mm；标尺仪器 0.15 mm、估读 1 mm。请按实际仪器或教师要求覆盖建议。导入文件中已填的误差值按手动值保留。</p><p>L、D、b：u(x) = √[(仪器限² + 估读限²)/3]。直径：uA(d̄) = √[Σ(dᵢ − d̄)²/(9×8)]，u(d̄) = √[uA(d̄)² + 仪器限²/3 + 估读限²/3]。</p><p>逐差法选 q≥2 组：uA(Δn) = √[Σ(δᵢ − δ̄)²/(q(q−1))]。标尺 B 类按课件保守处理：uB(Δn) = √[2(仪器限² + 估读限²)/3]，不按 q 缩小；u(Δn) = √[uA² + uB²]。此模型没有把共同系统误差当作独立重复读数；完全共同的加性零点偏差在差分中可抵消，但未分析的刻度等误差不据此减小。只有一组逐差或采用端点法时，不能从现有数据评估 Δn 的 A 类；平台按课件近似仅使用其 B 类，并为结果标注“近似评定”。</p><p>按资料近似忽略砝码与 g 的不确定度（须满足 u(ΔF)/ΔF 远小于 u(Δn)/Δn），5 个输入量之间视为独立：uᵣ(E)² = [u(L)/L]² + [u(D)/D]² + [u(b)/b]² + [2u(d̄)/d̄]² + [u(Δn)/Δn]²；u(E) = E·uᵣ(E)，U = 2u(E)。资料示例误差限：L 估读 2 mm、D 估读 5 mm、b 估读 0.2 mm，测微计仪器 0.004 mm；需按实际仪器与教师要求填写，勿照搬示例。</p></details></article>' +
       '<article class="yd-card"><h3>实验报告摘录</h3><div class="yd-report-lines"><div class="yd-report-line"><span>E（3 位有效数字）</span><strong data-out="reportE">待完成</strong></div><div class="yd-report-line"><span data-out="uDigitsLabel">合成标准不确定度 u(E)（2 位可疑数字）</span><strong data-out="u">未评定</strong></div><div class="yd-report-line"><span>相对标准不确定度</span><strong data-out="relative">未评定</strong></div><div class="yd-report-line"><span>课程结果 E ± u(E)，k = 1</span><strong data-out="standard">未评定</strong></div><div class="yd-report-line"><span>补充：E ± U，k = 2</span><strong data-out="expanded">未评定</strong></div></div><p class="yd-help">d̄ 和单独计算的 E 按资料保留 3 位有效数字；逐差与端点差按相减时最粗末位显示，逐差均值按所选逐差之和的有效位数显示，组数为准确数；ΔF 按质量与 g 的有效位数，ΔF/Δn 按两者较少的有效位数显示；误差限与标准不确定度可选择 1 或 2 位可疑数字，默认 2 位。最终先修约 u(E)，再让 E 的末位对齐；内部保留完整精度，不从单独 E 的三位显示值二次计算。补充结果 E ± U 采用相同修约方式；k = 2 为覆盖因子，不自动等同于确定的置信概率。</p></article></div></div>' +
       '<div class="yd-notice">原始记录请以实验现场观测为准。线性拟合只能辅助检查，不能替代弹性限度、摩擦、振动及调焦等实验条件的判断。</div><p class="yd-footer">数据仅保存在当前浏览器，建议完成记录后导出 CSV 留存。演示数据通过 E ≈ 200 GPa 的数学模型生成，所有演示参数均为教学假设。</p><div class="yd-toast" data-out="toast" role="status" aria-live="polite"></div>' +
@@ -625,7 +652,11 @@
       if (differences.note) notes.push(differences.note);
       outputs.status.dataset.state = result.errors.length ? 'error' : (result.ready ? 'ready' : 'waiting');
       notes.forEach(function (message) { var line = document.createElement('div'); line.textContent = message; outputs.status.appendChild(line); });
-      outputs.graph.innerHTML = graphMarkup(result, state.fields, uid);
+      wrapper.querySelector('[data-plot-symbol]').value = state.plotStyle.symbol;
+      wrapper.querySelector('[data-plot-size]').value = String(state.plotStyle.size);
+      text('plotSize', state.plotStyle.size + ' px');
+      wrapper.querySelector('[data-plot-size]').setAttribute('aria-valuetext', state.plotStyle.size + ' 像素');
+      outputs.graph.innerHTML = graphMarkup(result, state.fields, uid, state.plotStyle);
       ['svg', 'png'].forEach(function (action) { wrapper.querySelector('[data-action="' + action + '"]').disabled = !result.fit || !outputs.graph.querySelector('svg'); });
       outputs.standardComponents.replaceChildren();
       if (result.standardComponents) errorQuantities.forEach(function (q) { var value = result.standardComponents[q], row = document.createElement('div'); row.textContent = 'u(' + (q === 'd' ? 'd̄' : q === 'n' ? 'Δn' : q) + ') = ' + (value === null ? '待原始数据' : sig(value, state.digits) + ' mm'); outputs.standardComponents.appendChild(row); });
@@ -668,11 +699,13 @@
         if (errorKeys.indexOf(key) >= 0) state.errorOverrides[key] = true;
       }
       else if (target.hasAttribute('data-digits')) state.digits = target.value === '1' ? 1 : 2;
+      else if (target.hasAttribute('data-plot-symbol')) state.plotStyle = normalizePlotStyle({ symbol: target.value, size: state.plotStyle.size });
+      else if (target.hasAttribute('data-plot-size')) state.plotStyle = normalizePlotStyle({ symbol: state.plotStyle.symbol, size: target.value });
       else if (target.hasAttribute('data-method')) state.method = target.value === 'endpoint' ? 'endpoint' : 'successive';
       else if (target.dataset.pair != null) state.selected[Number(target.dataset.pair)] = target.checked;
       else return;
       editRevision++; render();
-      if (event.type === 'change' && target.hasAttribute('data-digits')) save();
+      if (event.type === 'change' && (target.hasAttribute('data-digits') || target.hasAttribute('data-plot-symbol') || target.hasAttribute('data-plot-size'))) save();
       else { clearTimeout(saveTimer); saveTimer = setTimeout(save, 250); }
     }
     function commitScaleOnBlur(event) {
@@ -703,14 +736,14 @@
         if (revision !== editRevision) { text('importStatus', '读取期间记录已被编辑，本次导入未应用。请重新选择文件。'); outputs.importStatus.dataset.state = 'waiting'; return; }
         var parsed = parseCSV(raw);
         if (!parsed.ok) { text('importStatus', '导入未应用，当前记录未改动。' + parsed.errors.slice(0, 8).join(' ') + (parsed.errors.length > 8 ? ' 另有 ' + (parsed.errors.length - 8) + ' 项，请修正后重试。' : '')); outputs.importStatus.dataset.state = 'error'; return; }
-        editRevision++; undo = normalize(state); state = parsed.state; applyState(); save();
+        editRevision++; undo = normalize(state); state = parsed.state; state.plotStyle = undo.plotStyle; applyState(); save();
         wrapper.querySelector('[data-action="undo"]').hidden = false;
         text('importStatus', 'CSV 检查通过，已导入 9 次直径、8 组增减载及误差限。' + parsed.warnings.join(' ') + ' 可用“恢复上一组”撤销。'); outputs.importStatus.dataset.state = 'ready';
       }).catch(function () { if (!destroyed && ticket === importSerial) { text('importStatus', '文件读取失败。请保存为 UTF-8 CSV 后重试；当前记录未改动。'); outputs.importStatus.dataset.state = 'error'; } });
     }
     function exportGraph(kind) {
       if (!lastResult.fit) return;
-      var svg = graphMarkup(lastResult, state.fields, uid + '-export'), filename = '杨氏模量_标尺均值与总质量';
+      var svg = graphMarkup(lastResult, state.fields, uid + '-export', state.plotStyle), filename = '杨氏模量_标尺均值与总质量';
       if (kind === 'svg') { download(svg, 'image/svg+xml;charset=utf-8', filename + '.svg'); text('toast', '已导出自包含 SVG 图片，可用于实验报告。'); return; }
       var objectURL = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })), image = new Image();
       image.onload = function () {
@@ -752,7 +785,7 @@
       wrapper.querySelector('[data-demo-error]').textContent = '';
     }
     function loadVerifiedDemo() {
-      editRevision++; undo = normalize(state); state = demoData(); applyState(); save();
+      editRevision++; undo = normalize(state); state = demoData(); state.plotStyle = undo.plotStyle; applyState(); save();
       wrapper.querySelector('[data-action="undo"]').hidden = false;
       text('toast', '已载入演示数据。数值由教学模型生成，修改后仍保留演示标记；开始实测前请清空。');
     }
@@ -774,10 +807,11 @@
       switch (button.dataset.action) {
         case 'demo': openDemoVerification(); break;
         case 'close-demo': closeDemoVerification(); break;
-        case 'clear': undo = normalize(state); state = blankState(); applyState(); save(); text('toast', '已清空输入；可使用“恢复上一组”撤销。'); break;
+        case 'clear': undo = normalize(state); state = blankState(); state.plotStyle = undo.plotStyle; applyState(); save(); text('toast', '已清空输入；可使用“恢复上一组”撤销。'); break;
         case 'undo': if (undo) { var previous = normalize(state); state = normalize(undo); undo = previous; applyState(); save(); text('toast', '已恢复上一组记录。'); } break;
         case 'template': download(csvTemplate(), 'text/csv;charset=utf-8;', '杨氏模量_数据导入模板.csv'); text('toast', '已下载模板。只填写数值列，另存为 UTF-8 CSV 后导入。'); break;
         case 'import': wrapper.querySelector('[data-csv-file]').click(); break;
+        case 'reset-plot-style': state.plotStyle = normalizePlotStyle(); editRevision++; render(); save(); break;
         case 'svg': exportGraph('svg'); break;
         case 'png': exportGraph('png'); break;
         case 'restore-errors': undo = normalize(state); errorKeys.forEach(function (key) { state.errorOverrides[key] = false; }); applyState(); save(); text('toast', '已恢复全部课程建议值；L、D 仪器限将随测量自动更新。可用“恢复上一组”撤销。'); break;
@@ -798,9 +832,9 @@
       getData: function () { return normalize(state); },
       getResult: function () { return calculate(state); },
       setData: function (data) { editRevision++; undo = normalize(state); state = normalize(data); applyState(); save(); wrapper.querySelector('[data-action="undo"]').hidden = false; },
-      reset: function () { editRevision++; undo = normalize(state); state = blankState(); applyState(); save(); wrapper.querySelector('[data-action="undo"]').hidden = false; },
+      reset: function () { editRevision++; undo = normalize(state); state = blankState(); state.plotStyle = undo.plotStyle; applyState(); save(); wrapper.querySelector('[data-action="undo"]').hidden = false; },
       destroy: function () { destroyed = true; clearTimeout(saveTimer); global.removeEventListener('afterprint', printCleanup); wrapper.remove(); }
     };
   }
-  global.YoungData = { mount: mount, calculate: calculate, demoData: demoData, storageKey: STORAGE_KEY, csvTemplate: csvTemplate, exportCSV: exportDataCSV, parseCSV: parseCSV, graphSVG: function (state) { var normalized = normalize(state); return graphMarkup(calculate(normalized), normalized.fields, 'young-data-export'); }, normalize: normalize, maxCSVBytes: MAX_CSV_BYTES, formatMean: meanDisplay, formatMeasurement: roundedMeasurement, formatDifferences: function (state) { var normalized = normalize(state); return differenceDisplay(calculate(normalized), normalized.fields); }, formatFit: function (state) { var normalized = normalize(state); return fitDisplay(calculate(normalized), normalized.fields); } };
+  global.YoungData = { mount: mount, calculate: calculate, demoData: demoData, storageKey: STORAGE_KEY, csvTemplate: csvTemplate, exportCSV: exportDataCSV, parseCSV: parseCSV, graphSVG: function (state) { var normalized = normalize(state); return graphMarkup(calculate(normalized), normalized.fields, 'young-data-export', normalized.plotStyle); }, normalize: normalize, maxCSVBytes: MAX_CSV_BYTES, formatMean: meanDisplay, formatMeasurement: roundedMeasurement, formatDifferences: function (state) { var normalized = normalize(state); return differenceDisplay(calculate(normalized), normalized.fields); }, formatFit: function (state) { var normalized = normalize(state); return fitDisplay(calculate(normalized), normalized.fields); } };
 })(window);
