@@ -33,3 +33,5 @@
 .error-comparison .error-inputs{gap:10px}
 .error-comparison .error-inputs .numeric{width:132px}
 @media(max-width:660px){.focus-practice .control{grid-template-columns:105px minmax(60px,1fr) 40px;gap:8px}}
+
+.instrument-figure{margin:0 0 18px}.instrument-photo-button{display:block;width:100%;padding:0;border:0;background:#fff;cursor:zoom-in}.instrument-photo-button:focus-visible{outline:3px solid #246891;outline-offset:3px}.instrument-photo-button .instrument-photo{display:block;width:100%;object-fit:contain}.instrument-figure-detail .instrument-photo{max-height:220px}.instrument-photo-large{display:block;width:auto;max-width:100%;max-height:78vh;object-fit:contain;margin:auto}dialog:has(.instrument-photo-large){width:min(1000px,94vw)}
