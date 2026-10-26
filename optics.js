@@ -14,9 +14,11 @@
     let visible = false, lastTime = null, frame = 0, destroyed = false;
     container.className = 'optical-lab';
     container.innerHTML = `<div class="optical-toolbar"><span class="optical-state" data-opt="status" role="status"></span><button type="button" class="secondary" data-opt-action="play"></button><button type="button" class="optical-reset" data-opt-action="reset">回到零点</button></div>
-      <svg class="optical-scene" viewBox="0 0 640 300" role="img" aria-labelledby="optical-title optical-description">
+      <div class="optical-view-switch" role="group" aria-label="光路显示方式"><button type="button" data-opt-view="3d" aria-pressed="false">三维示意</button><button type="button" data-opt-view="2d" aria-pressed="true">二维光路</button></div>
+      <div class="optical-three-host" data-opt-three></div>
+      <svg data-opt-flat class="optical-scene" viewBox="0 0 640 300" role="img" aria-labelledby="optical-title optical-description">
         <title id="optical-title">动态光杠杆：镜面转动，反射光偏转，标尺读数同步变化</title>
-        <desc id="optical-description">入射方向固定。加载时镜面顺时针转动θ，反射光方向转动2θ，光点沿标尺下移。数值采用真实小角参数，图中转角放大10倍。</desc>
+        <desc id="optical-description">入射方向固定。钢丝伸长带动后足下降，镜面向钢丝一侧转动θ，反射光方向改变2θ，光点沿标尺上移。数值显示位移大小，图中转角放大10倍。</desc>
         <defs><marker id="optical-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 6 3 0 6" fill="#b08844"/></marker><marker id="optical-dimension" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto-start-reverse"><path d="M6 0 0 3 6 6" fill="none" stroke="#9b854d" stroke-width="1"/></marker></defs>
         <rect width="640" height="300" rx="8" fill="#f2f5f9"/>
         <path data-opt="baseline" stroke="#a8b8c8" stroke-dasharray="5 5"/>
@@ -33,7 +35,7 @@
         <text data-opt="theta-label" fill="#075b9b" font-size="15">θ</text>
         <text data-opt="twice-label" fill="#a27b38" font-size="15">2θ</text>
         <circle cx="110" cy="130" r="4" fill="#075b9b"/>
-        <g data-opt="ruler"><path d="M0 53V237" stroke="#7897b2" stroke-width="4"/>${Array.from({length:19},(_,i)=>`<path d="M0 ${58+i*9}h${i%5===0?12:7}" stroke="#a3b5c6" stroke-width="1"/>`).join('')}<text x="16" y="125" font-size="12" fill="#8a9fb4">n₀</text><text x="-12" y="250" font-size="13" fill="#708ca5">标尺</text></g>
+        <g data-opt="ruler"><path d="M0 27V237" stroke="#7897b2" stroke-width="4"/>${Array.from({length:23},(_,i)=>`<path d="M0 ${32+i*9}h${i%5===0?12:7}" stroke="#a3b5c6" stroke-width="1"/>`).join('')}<text x="16" y="125" font-size="12" fill="#8a9fb4">n₀</text><text x="-12" y="250" font-size="13" fill="#708ca5">标尺</text></g>
         <path data-opt="displacement" stroke="#b08844" stroke-width="1.1" marker-start="url(#optical-dimension)" marker-end="url(#optical-dimension)"/>
         <circle data-opt="spot-halo" r="11" fill="#caaa5a" opacity=".14"/>
         <circle data-opt="spot" r="4.5" fill="#b08844"/>
@@ -44,8 +46,8 @@
         <path data-opt="distance-line" stroke="#a9bacb" stroke-width="1"/>
         <text data-opt="distance-label" y="278" text-anchor="middle" font-size="13" fill="#708ca5"></text>
       </svg>
-      <p class="optical-caption">转角放大 10 倍 · 长度示意 · 下方数值按真实参数计算</p>
-      <div class="optical-metrics" aria-label="实时物理量"><div><span>镜面转角 θ</span><output data-opt="theta"></output></div><div><span>光线偏转 2θ</span><output data-opt="twice"></output></div><div><span>标尺位移 Δn</span><output data-opt="dn"></output></div></div>
+      <p class="optical-caption">转角放大 10 倍 · 长度与形变示意 · 下方数值按真实参数计算</p>
+      <div class="optical-metrics" aria-label="实时物理量"><div><span>镜面转角 θ</span><output data-opt="theta"></output></div><div><span>光线偏转 2θ</span><output data-opt="twice"></output></div><div><span>标尺位移大小 Δn</span><output data-opt="dn"></output></div></div>
       <label class="control"><span>金属丝伸长 ΔL</span><input id="optics-extension" type="range" min="0" max="0.5" step="0.001" value="0.25"><output data-opt="extension"></output></label>
       <label class="control"><span>镜尺距离 D</span><input id="optics-distance" type="range" min="0.8" max="2" step="0.1" value="1.5"><output data-opt="D"></output></label>
       <label class="control"><span>光杠杆臂 b</span><input id="optics-arm" type="range" min="40" max="100" step="5" value="70"><output data-opt="b"></output></label>
@@ -53,30 +55,46 @@
     const nodes = Object.fromEntries(Array.from(container.querySelectorAll('[data-opt]'), el=>[el.dataset.opt,el]));
     const play = container.querySelector('[data-opt-action="play"]');
     const slider = container.querySelector('#optics-extension');
+    const threeHost = container.querySelector('[data-opt-three]'), flatScene = container.querySelector('[data-opt-flat]');
+    let scene3d = null, viewMode = '2d';
+    if (global.YoungOptics3D) {
+      try { scene3d = global.YoungOptics3D.mount(threeHost, {D,b,extension,theta:model(D,b,extension).theta,visualFactor:10,pulse:0}); }
+      catch (error) { if (global.console) global.console.warn('光路三维视图未能初始化，已保留二维示意。',error); }
+    }
+    function setView(mode) {
+      viewMode = mode === '3d' && scene3d ? '3d' : '2d';
+      threeHost.hidden = viewMode !== '3d'; if(viewMode==='3d')flatScene.setAttribute('hidden','');else flatScene.removeAttribute('hidden');
+      container.querySelectorAll('[data-opt-view]').forEach(button=>{
+        button.setAttribute('aria-pressed',String(button.dataset.optView === viewMode));
+        if(button.dataset.optView==='3d')button.disabled=!scene3d;
+      });
+      draw();
+    }
     const attr = (name, attrs) => Object.entries(attrs).forEach(([key,value])=>nodes[name].setAttribute(key,String(value)));
     const point = (radius, angle) => [110+radius*Math.cos(angle),130+radius*Math.sin(angle)];
     function arc(radius, from, to) {
       const a=point(radius,from), z=point(radius,to);
-      return `M${a[0]} ${a[1]} A${radius} ${radius} 0 0 1 ${z[0]} ${z[1]}`;
+      return `M${a[0]} ${a[1]} A${radius} ${radius} 0 0 ${to>=from?1:0} ${z[0]} ${z[1]}`;
     }
     function draw() {
       const m = model(D,b,extension), visual=m.theta*10;
-      const rulerX=110+172*D, hitY=130+(rulerX-110)*Math.tan(2*visual);
-      const alpha=-80/DEG+visual, tip=point(92,alpha);
+      if(scene3d&&viewMode==='3d')scene3d.update({D,b,extension,theta:m.theta,visualFactor:10,pulse:(phase*8)%1});
+      const rulerX=110+172*D, hitY=130-(rulerX-110)*Math.tan(2*visual);
+      const alpha=-80/DEG-visual, tip=point(92,alpha);
       attr('mirror',{d:`M110 130 L${tip[0]} ${tip[1]}`});
       attr('baseline',{d:`M76 130 H${rulerX+16}`});
       attr('ruler',{transform:`translate(${rulerX} 0)`});
       attr('initial-direction',{x:rulerX+18});
       attr('reflected',{d:`M110 130 L${(110+rulerX)/2} ${(130+hitY)/2} L${rulerX} ${hitY}`});
       const angleVisible=extension>0.005?1:0;
-      const mirrorArcMid=point(60,-80/DEG+visual/2), lightArcMid=point(65,visual);
+      const mirrorArcMid=point(60,-80/DEG-visual/2), lightArcMid=point(65,-visual);
       attr('theta-arc',{d:arc(60,-80/DEG,alpha),opacity:angleVisible});
-      attr('twice-arc',{d:arc(65,0,2*visual),opacity:angleVisible});
+      attr('twice-arc',{d:arc(65,0,-2*visual),opacity:angleVisible});
       attr('theta-label',{x:158,y:76,opacity:angleVisible});
       attr('theta-leader',{d:`M151 72 L${mirrorArcMid[0]} ${mirrorArcMid[1]}`,opacity:angleVisible});
       attr('twice-label',{x:207,y:106,opacity:angleVisible});
       attr('twice-leader',{d:`M215 111 L${lightArcMid[0]} ${lightArcMid[1]}`,opacity:angleVisible});
-      attr('displacement',{d:`M${rulerX+27} 130V${hitY}`,opacity:hitY-130>2?1:0});
+      attr('displacement',{d:`M${rulerX+27} 130V${hitY}`,opacity:Math.abs(hitY-130)>2?1:0});
       attr('spot',{cx:rulerX,cy:hitY});attr('spot-halo',{cx:rulerX,cy:hitY});
       attr('displacement-label',{x:rulerX+36,y:(130+hitY)/2+5,opacity:extension>0.005?1:0});
       attr('distance-line',{d:`M110 252v7M110 256H${rulerX}M${rulerX} 252v7`});
@@ -116,6 +134,8 @@
       draw();
     }
     function onClick(e) {
+      const view = e.target.closest('[data-opt-view]')?.dataset.optView;
+      if(view){setView(view);return}
       const action=e.target.closest('[data-opt-action]')?.dataset.optAction;
       if(action==='play'){running=!running;reconcile()}
       if(action==='reset'){running=false;extension=0;phase=0;draw();reconcile()}
@@ -123,8 +143,8 @@
     container.addEventListener('input',onInput);container.addEventListener('click',onClick);
     document.addEventListener('visibilitychange',reconcile);
     const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;reconcile()},{threshold:0.05});
-    observer.observe(container);draw();updateStatus();if(global.YoungMath)global.YoungMath.typeset(container);
-    return {destroy(){destroyed=true;cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('visibilitychange',reconcile);container.removeEventListener('input',onInput);container.removeEventListener('click',onClick)}};
+    observer.observe(container);setView(scene3d?'3d':'2d');updateStatus();if(global.YoungMath)global.YoungMath.typeset(container);
+    return {destroy(){destroyed=true;if(scene3d){scene3d.destroy();scene3d=null}cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('visibilitychange',reconcile);container.removeEventListener('input',onInput);container.removeEventListener('click',onClick)}};
   }
   global.YoungOptics={mount,model};
 })(window);
