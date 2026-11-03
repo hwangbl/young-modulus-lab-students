@@ -23,3 +23,5 @@ dialog{border-radius:2px;border-color:#acc3d1;color:#242424;background:#fff}dial
 
 /* Procedure labels are counters, while scalar symbols retain math italics. */
 .explain-row .symbol.step-index,.numbered li:before{font-style:normal;font-variant-numeric:tabular-nums}
+
+.lecture-video{display:grid;grid-template-columns:minmax(180px,.75fr) minmax(0,1.65fr);gap:28px;align-items:center;padding:28px;margin:28px 0 36px;border:1px solid #c5d3db;background:#fff}.lecture-copy h2{margin:8px 0 12px;color:#10405c;font-size:24px}.lecture-copy p:not(.section-kicker){color:#5a6f7b;line-height:1.8}.lecture-player{display:block;width:100%;aspect-ratio:16/9;background:#102a3a}.lecture-player:focus-visible{outline:3px solid #246891;outline-offset:3px}@media(max-width:700px){.lecture-video{grid-template-columns:1fr;gap:14px;padding:18px}}@media print{.lecture-video{display:none}}
